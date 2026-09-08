@@ -8,7 +8,7 @@ dotenv.config();
 
 const app = express();
 app.use(cookieParser());
-app.use(json({ limit: "5m" }));
+app.use(json({ limit: "5mb" }));
 app.use(
   cors({
     origin: process.env.CLIENT_URL,
