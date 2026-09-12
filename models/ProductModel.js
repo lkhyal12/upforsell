@@ -27,10 +27,12 @@ const ProductSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-
-    price: {
-      type: Number,
-      min: 0,
+    colors: {
+      type: [String],
+      required: true,
+    },
+    sizes: {
+      type: [String],
       required: true,
     },
 
@@ -48,8 +50,8 @@ const ProductSchema = new mongoose.Schema(
 
     images: [
       {
-        type: String,
-        trim: true,
+        type: [String],
+        required: true,
       },
     ],
 

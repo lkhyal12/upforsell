@@ -35,7 +35,17 @@ export async function getSingleProduct(req, res) {
 
 // create product controller
 export async function createProductController(req, res) {
-  const { name, slug, description, price, category, brand, images } = req.body;
+  const {
+    name,
+    slug,
+    description,
+    price,
+    category,
+    brand,
+    images,
+    colors,
+    sizes,
+  } = req.body;
   if (
     !name ||
     !slug ||
@@ -44,7 +54,9 @@ export async function createProductController(req, res) {
     !category ||
     !brand ||
     !images ||
-    images.length == 0
+    images.length == 0 ||
+    !colors?.length ||
+    !sizes?.length
   )
     return res.status(400).json({ message: "All fields are required" });
 
@@ -57,6 +69,8 @@ export async function createProductController(req, res) {
       category,
       brand,
       images,
+      colors,
+      sizes,
     });
 
     return res
@@ -71,7 +85,17 @@ export async function createProductController(req, res) {
 // update product function
 
 export async function updateProductController(req, res) {
-  const { name, slug, description, price, category, brand, images } = req.body;
+  const {
+    name,
+    slug,
+    description,
+    price,
+    category,
+    brand,
+    images,
+    colors,
+    sizes,
+  } = req.body;
   const { id: productId } = req.params;
   if (!productId)
     return res.status(400).json({ message: "Missing product ID" });
@@ -87,6 +111,8 @@ export async function updateProductController(req, res) {
     if (slug) product.slug = slug;
     if (brand) product.brand = brand;
     if (images) product.images = images;
+    if (colors) product.colors = colors;
+    if (sizes) product.sizes = sizes;
     await product.save();
     return res
       .status(200)
@@ -110,6 +136,56 @@ export async function deleteProductController(req, res) {
     return res.status(200).json({ message: "Product deleted successfully" });
   } catch (err) {
     logControllerError("deleteProductController", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+// get products by filter
+export async function getProductsByFilter(req, res) {
+  const { maxPrice, minPrice, category, brand, gender, sortBy, color, size } =
+    req.body;
+  const query = {};
+  try {
+    if (minPrice !== undefined)
+      query.price = { ...query.price, $gte: Number(minPrice) };
+    if (maxPrice !== undefined)
+      query.price = { ...query.price, $lte: Number(maxPrice) };
+    if (category) query.category = category;
+    if (brand) query.brand = brand;
+    if (gender) query.gender = gender;
+    if (color && color.length > 0) query.colors = { $in: color };
+    if (size && size.length > 0) query.sizes = { $in: size };
+
+    let productQuery = ProductModel.find(query);
+    if (sortBy === "price-low") productQuery.sort({ price: 1 });
+    else if (sortBy === "price-high") productQuery.sort({ price: -1 });
+    else if (sortBy === "newest") productQuery.sort({ createdAt: -1 });
+    const products = await productQuery;
+
+    return res
+      .status(200)
+      .json({ message: "Products sent successfully", products });
+  } catch (err) {
+    logControllerError("getProductsByFilter", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+// toggle isFeatured products
+export async function toggleIsFeaturedController(req, res) {
+  const { id } = req.params;
+  if (!id || !mongoose.Types.ObjectId.isValid(id))
+    return res.status(400).json({ message: "Missing or invalid product ID" });
+  try {
+    const product = await ProductModel.findById(id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+    product.isFeatured = !product.isFeatured;
+    await product.save();
+    return res
+      .status(200)
+      .json({ message: "Product updated successfully", product });
+  } catch (err) {
+    logControllerError("toggleIsFeturedController", err);
     return res.status(500).json({ message: "Server error" });
   }
 }
