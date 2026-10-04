@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const OrderItemSchema = new mongoose.Schema(
   {
     product: {
-      type: mongoose.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
       required: true,
     },
@@ -42,7 +42,7 @@ const OrderItemSchema = new mongoose.Schema(
 const OrderSchema = new mongoose.Schema(
   {
     user: {
-      type: mongoose.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
@@ -105,6 +105,10 @@ const OrderSchema = new mongoose.Schema(
       type: String,
       enum: ["cash_on_delivery", "paypal", "stripe"],
       required: true,
+    },
+    paymentId: {
+      type: String,
+      default: null,
     },
     paymentStatus: {
       type: String,
