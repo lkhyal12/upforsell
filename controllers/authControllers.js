@@ -2,6 +2,7 @@ import {
   assignTokenToCookies,
   generateTokens,
   logControllerError,
+  mergeCart,
   sendEmailVerificationCode,
   sendPasswordResetCodeFunc,
 } from "../lib/utils.js";
@@ -11,7 +12,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
 export async function registerUserController(req, res) {
-  const { name, email, password } = req.body;
+  const { name, email, password, guestId } = req.body;
   const trimmedName = name?.trim();
   const trimmedEmail = email?.trim().toLowerCase();
   if (!trimmedName || !trimmedEmail || !password)
@@ -32,6 +33,7 @@ export async function registerUserController(req, res) {
       emailVerificationCode: verificationCode,
       verificationCodeExpires,
     });
+
     const isVerficationCodeSent = await sendEmailVerificationCode(
       user.email,
       verificationCode,
@@ -40,6 +42,9 @@ export async function registerUserController(req, res) {
       return res
         .status(500)
         .json({ message: "Failed to send verification email" });
+
+    // merge guest cart with user cart
+    await mergeCart(user._id, guestId);
     const { accessToken, refreshToken } = generateTokens(user._id);
     assignTokenToCookies(refreshToken, res);
     return res.status(201).json({
@@ -62,7 +67,7 @@ export async function registerUserController(req, res) {
 // login controller
 
 export async function loginController(req, res) {
-  const { email, password } = req.body;
+  const { email, password, guestId } = req.body;
   const trimmedEmail =
     typeof email === "string" ? email.trim().toLowerCase() : "";
 
@@ -75,6 +80,9 @@ export async function loginController(req, res) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid)
       return res.status(400).json({ message: "Invalid credentials" });
+
+    // merge guest and user carts
+    await mergeCart(user._id, guestId);
     const { accessToken, refreshToken } = generateTokens(user._id);
     assignTokenToCookies(refreshToken, res);
     return res.status(200).json({

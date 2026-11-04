@@ -18,7 +18,8 @@ app.use(
     credentials: true,
   }),
 );
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
+app.get("/", (req, res) => res.send("weolcome to my api"));
 app.use("/api/auth", authRouter);
 app.use("/api/products", productsRouter);
 app.use("/api/cart", cartRouter);

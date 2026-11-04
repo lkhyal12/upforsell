@@ -5,7 +5,7 @@ const CartItemSchema = new mongoose.Schema(
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
-      required: true,
+      default: null,
     },
     color: {
       type: String,
@@ -20,6 +20,10 @@ const CartItemSchema = new mongoose.Schema(
       required: true,
       min: 1,
       default: 1,
+    },
+    dummyProduct: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
   },
   { _id: false },

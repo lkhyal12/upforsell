@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { logControllerError } from "../lib/utils.js";
 import CartModel from "../models/CartModel.js";
 import ProductModel from "../models/ProductModel.js";
-
+const dummyJsonBaseUrl = "https://dummyjson.com/products";
 // get cart controller
 export async function getCartController(req, res) {
   const { userId, guestId } = req.body;
@@ -12,8 +12,11 @@ export async function getCartController(req, res) {
   try {
     let cart;
     if (userId) {
-      cart = await CartModel.findOne({ user: req.user._id });
-    } else cart = await CartModel.findOne({ guestId });
+      cart = await CartModel.findOne({ user: req.user._id }).populate(
+        "cartItems.product",
+      );
+    } else
+      cart = await CartModel.findOne({ guestId }).populate("cartItems.product");
     if (!cart) return res.status(404).json({ message: "Not cart was found" });
 
     return res
@@ -27,43 +30,80 @@ export async function getCartController(req, res) {
 
 // add to cart controller
 export async function addToCartController(req, res) {
-  const { guestId, userId, productId, color, size } = req.body;
-  if (!guestId && !userId)
-    return res.status(400).json({ message: "Missing guest and user ID" });
+  const { productId, color, size, guestId } = req.body;
+  const userId = req.user?._id;
 
-  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
-    return res.status(400).json({
-      message: "Invalid or missing product ID",
-    });
-  }
+  if (!userId && !guestId)
+    return res
+      .status(400)
+      .json({ message: "Missing user guest identification" });
+
+  if (productId === undefined || productId == null || productId === "")
+    return res.status(400).json({ message: "Missing product ID" });
+  if (!color || !size)
+    return res.status(400).json({ message: "Color and Size are required" });
+
   try {
-    let cart;
-    if (userId) {
-      cart = await CartModel.findOne({ user: userId });
-    } else cart = await CartModel.findOne({ guestId });
+    let product;
+    let isDummyProduct = false;
 
-    if (!cart) return res.status(404).json({ message: "No cart was found" });
-    const product = await ProductModel.findById(productId);
-    if (!product) return res.status(404).json({ message: "Product not found" });
-    const index = cart.cartItems.findIndex(
-      (p) =>
-        p.product.toString() === productId.toString() &&
-        p.color === color &&
-        p.size === size,
-    );
-    if (index >= 0) cart.cartItems[index].quantity++;
-    else {
-      const cartItem = {
-        product: productId,
+    if (mongoose.isObjectIdOrHexString(String(productId))) {
+      product = await ProductModel.findById(productId);
+
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+    } else {
+      const dummyId = Number(productId);
+      if (!Number.isInteger(dummyId) || dummyId <= 0) {
+        return res.status(404).json({ message: "Invalid product ID" });
+      }
+
+      const response = await fetch(`${dummyJsonBaseUrl}/${productId}`);
+
+      if (!response.ok)
+        return res.status(404).json({ message: "Product not found" });
+      product = await response.json();
+      isDummyProduct = true;
+    }
+    let cart = await CartModel.findOne(userId ? { user: userId } : { guestId });
+    if (!cart) {
+      cart = await CartModel.create(
+        userId ? { user: userId, cartItems: [] } : { guestId, cartItems: [] },
+      );
+    }
+
+    const existingProduct = cart.cartItems.find((item) => {
+      const sameProduct = isDummyProduct
+        ? item.dummyProduct?.id == productId
+        : item.product.toString() === productId.toString();
+
+      return sameProduct && item.color === color && item.size === size;
+    });
+
+    if (existingProduct) {
+      existingProduct.quantity++;
+    } else {
+      const newItem = {
         color,
         size,
+        quantity: 1,
       };
-      cart.cartItems.push(cartItem);
+      if (isDummyProduct) {
+        newItem.dummyProduct = product;
+      } else newItem.product = product._id;
+
+      cart.cartItems.push(newItem);
     }
+
     await cart.save();
+    if (!isDummyProduct) {
+      await cart.populate("cartItems.product");
+    }
+
     return res
       .status(200)
-      .json({ message: "Product add to cart", cart, product });
+      .json({ message: "Product added to cart successfully", cart });
   } catch (err) {
     logControllerError("addToCartController", err);
     return res.status(500).json({ message: "Server error" });
