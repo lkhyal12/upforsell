@@ -89,12 +89,15 @@ const OrderSchema = new mongoose.Schema(
       },
     },
 
-    subtotal: {
+    total: {
       type: Number,
       required: true,
       min: 0,
     },
-
+    quantity: {
+      type: Number,
+      default: 1,
+    },
     shippingCost: {
       type: Number,
       required: true,

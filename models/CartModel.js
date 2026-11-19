@@ -2,28 +2,30 @@ import mongoose from "mongoose";
 
 const CartItemSchema = new mongoose.Schema(
   {
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
-      default: null,
+    productId: {
+      type: Number,
+      required: true,
     },
-    color: {
+
+    title: {
       type: String,
       required: true,
     },
-    size: {
-      type: String,
+
+    price: {
+      type: Number,
       required: true,
     },
+
+    thumbnail: {
+      type: String,
+    },
+
     quantity: {
       type: Number,
       required: true,
       min: 1,
       default: 1,
-    },
-    dummyProduct: {
-      type: mongoose.Schema.Types.Mixed,
-      default: null,
     },
   },
   { _id: false },
